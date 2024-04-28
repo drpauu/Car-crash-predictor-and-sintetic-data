@@ -1,15 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May  1 13:41:58 2019
-
-@author: Administrator
-"""
-
 import pandas as pd
 import numpy as np 
 from datetime import datetime, date
 from tqdm import tqdm
 from math import radians, cos, sin, asin, sqrt, log
+import sys
+sys.path.append('/home/user/Github/__pycache__')
 from crash_time import add_crash_timestamp
 from time import mktime
 import gc
@@ -26,12 +21,10 @@ def data_preprocessing():
                                                'ignition_on_flag', 'record_time', 'i_flag', 'ignition_on_flag_new'])
         dataset = dataset.loc[:,('vin', 'latitude', 'longitude', 'speed', 'record_time')]
         dataset = dataset.astype(np.str)
-        #数据截取
         dataset['vin'] = dataset['vin'].apply(lambda x:((str(x)).split("=")))
         dataset['vin'] = dataset['vin'].apply(lambda x:x[1])
         dataset['vin'] = dataset['vin'].astype('int32')
         dataset = dataset[dataset['vin'].isin(user)]
-        #dataset = dataset[dataset['vin'].isin(user)]
         dataset['nan'] = dataset['latitude'].apply(lambda x:str(x)[-4:])
         dataset['none'] = dataset['nan'].apply(lambda x:1 if(x=='None') else 0)
         dataset = dataset[dataset['none'].isin([0])]
@@ -47,7 +40,6 @@ def data_preprocessing():
         dataset['record_time'] = dataset['record_time'].apply(lambda x:x[1])
         dataset.drop('speed1', axis=1, inplace=True)
         dataset = dataset[dataset['speed'] != 'None']
-        #数据类型转换
 
         dataset['latitude'] = dataset['latitude'].astype('float32')
         dataset['longitude'] = dataset['longitude'].astype('float32')
@@ -80,16 +72,13 @@ def read_dataset():
     for i in tqdm(range(25)):
         filename = "G:/shanghaimotor/code/track_21/part" + str(i) + ".csv"
         dataset = pd.read_csv(filename)
-        #add_timestamp(dataset)
         result = result.append(dataset, ignore_index=True)
     result = result[result['latitude'] < 54]
     result = result[result['latitude'] > 10]
     result = result[result['longitude'] < 136]
     result = result[result['longitude'] > 73]
-    #result.sort_values(['vin', 'record_time'], inplace=True)
     return(result)    
 
-#2018年发生碰撞的车辆只计算发生碰撞前的特征
 def flag2_2018(dataset):
     result = dataset.copy()
     flag1 = pd.read_csv(r"G:\shanghaimotor\code\flag2.csv")
@@ -132,7 +121,6 @@ def flag1_2018(dataset):
     result.reset_index(drop=True, inplace=True)
     return(result)
     
-#增加年份、月份、天、小时等信息
 def add_timestamp(dataset):
     dataset['record_time'] = dataset['record_time'].astype(str)
     dataset['record_time'] = dataset['record_time'].apply(lambda x:datetime.strptime(x,"%Y-%m-%d %H:%M:%S"))
@@ -141,7 +129,6 @@ def add_timestamp(dataset):
     dataset['day'] = dataset['record_time'].apply(lambda x:x.day)
     dataset['hour'] = dataset['record_time'].apply(lambda x:x.hour)
 
-#计算日均驾驶时长
 def driving_time(dataset):
     num_of_point = dataset.copy()
     add_timestamp(num_of_point)
@@ -154,7 +141,6 @@ def driving_time(dataset):
     num_of_point.columns = ['vin', 'driving_time']
     return(num_of_point)
 
-#计算日均覆盖区域
 def covering(dataset):
     covering = dataset.copy()
     add_timestamp(covering)
@@ -170,7 +156,6 @@ def covering(dataset):
     covering.columns = ['vin', 'covering']
     return(covering)
 
-#计算最常访问地点的访问频次差异
 def visiting_frequency(dataset):
     place = dataset.copy()
     add_timestamp(place)
@@ -198,11 +183,10 @@ def visiting_frequency(dataset):
     user_place['place_dif'] = user_place['place_dif'].apply(lambda x:float('%.4f' %x))
     return(user_place)
 
-#计算球面距离
 def haversine(lon1, lon2, lat1, lat2):
-    #将十进制转化为弧度
+
     lon1, lon2, lat1, lat2 = map(radians, [lon1, lon2, lat1, lat2])
-    #haversine公式
+
     dlon = lon2 - lon1
     dlat = lat2 - lat1
     a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
@@ -210,7 +194,7 @@ def haversine(lon1, lon2, lat1, lat2):
     r = 6371
     return(c * r)
 
-#计算回旋半径        
+     
 def turning_radius(dataset):
     turning = dataset.copy()
     add_timestamp(turning)
@@ -249,7 +233,6 @@ def turning_radius(dataset):
         i += 1
     return(turning_radius)
 
-#周日和周末平均出行时间的差异
 def weekdays_weekends(dataset):
     ww = dataset.copy()
     add_timestamp(ww)
@@ -276,7 +259,6 @@ def weekdays_weekends(dataset):
     ww = ww.loc[:,('vin', 'weekdays_weekends')]
     return(ww)
 
-#生活熵
 def life_entropy(dataset):
     life_en = dataset.copy()
     add_timestamp(life_en)
@@ -308,7 +290,6 @@ def life_entropy(dataset):
         i += 1
     return(entropy)
 
-#计算日均行驶距离
 def driving_distance(dataset):
     dis = dataset.copy()
     add_timestamp(dis)
@@ -341,7 +322,6 @@ def driving_distance(dataset):
     distance['dis_per_day'] = distance['distance'] / distance['day']
     return(distance)
 
-#旅行次数
 def driving_trip(dataset):
     t = dataset.copy()
     t['record_time'] = t['record_time'].apply(lambda x:str(x))
@@ -363,12 +343,10 @@ def driving_trip(dataset):
         i += 1
     return(trip)
     
-#工作日和节假日出行天数的比例
 def dayofweek_pro(dataset):
     loc = dataset.copy()
     loc = loc[loc['year'] == 2018]
-    #flag = pd.read_csv(r"G:\shanghaimotor\code\flag2019.csv")
-    #loc = loc[loc['vin'].isin(list(flag['vin']))]
+
     loc = loc.drop_duplicates(['vin', 'year', 'month', 'day'])
     loc['record_time'] = loc['record_time'].apply(lambda x:str(x))
     loc['record_time'] = loc['record_time'].apply(lambda x:datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))
@@ -395,7 +373,6 @@ def dayofweek_pro(dataset):
     return(dayofweek_day)
            
 
-#每个月最常访问top10的地点访问频次
 def most_visiting(loc):
     visiting = loc.copy()
     add_timestamp(visiting)
@@ -429,7 +406,6 @@ def most_visiting(loc):
         month.loc[i, 'mean'] = t2
     return(month)
 
-#周末是否经常去不经常去的地方
 def weekends_travelling(dataset):
     loc = dataset.copy()
     loc = loc[loc['year'] == 2018]
@@ -474,40 +450,10 @@ def weekends_travelling(dataset):
             weekends_visiting.loc[i, 'weekends_visiting'] = np.mean(month_weekends)
         i += 1
     return(weekends_visiting)
-'''    
-#统计疲劳驾驶的次数
-def fatigue_driving_count(dataset):
-    h4_driving = dataset.copy()
-    fatigue_driving = pd.DataFrame(columns=['vin', 'fat_driving_count'])
-    k = 0
-    for vin in tqdm(h4_driving['vin'].unique()):
-        s = 0
-        dt_user = h4_driving[h4_driving['vin'] == vin]
-        dt_user.reset_index(drop=True, inplace=True)
-        j = 1
-        for i in range(0,len(dt_user),j):
-            start_time = dt_user.loc[i, 'record_time']
-            for j in range(i, len(dt_user)):
-                if (dt_user.loc[j, 'record_time'] - dt_user.loc[j, 'record_time']).seconds >= 1800:
-                    break
-                else:
-                    end_time = dt_user.loc[j, 'record_time']
-                if (end_time - start_time).seconds >= 9600:
-                    s += 1
-                    break
-            if j == 0:
-                j = 1
-        fatigue_driving.loc[k, 'vin'] = vin
-        fatigue_driving.loc[k, 'fat_driving_count'] = s
-        k += 1  
-    return(fatigue_driving) 
-'''
-#统计疲劳驾驶的次数
+
 def fatigue_driving_count(dataset):
     loc = dataset.copy()
     loc = loc[loc['year'] == 2018]
-    #flag = pd.read_csv(r"G:\shanghaimotor\code\flag2019.csv")
-    #loc = loc[loc['vin'].isin(list(flag['vin']))]
     loc['record_time'] = loc['record_time'].apply(lambda x:str(x))
     loc['record_time'] = loc['record_time'].apply(lambda x:datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))    
     k = 0
@@ -535,12 +481,9 @@ def fatigue_driving_count(dataset):
     return(fatigue_driving)
                         
 
-#每辆车发生事故的概率
 def accident_rate(dataset):
     loc = dataset.copy()
-    #add_timestamp(loc)
     crash = pd.read_csv(r"G:\shanghaimotor\code\flag2.csv")
-    #crash = crash[crash['flag']==1]
     add_crash_timestamp(crash)
     crash_place = pd.merge(loc, crash, on=['vin', 'year', 'month', 'day', 'hour'])
     crash_place['lat'] = crash_place['latitude'].apply(lambda x:round(x, 2))
@@ -577,7 +520,6 @@ def accident_rate(dataset):
     return(loc_account)
 
 
-#计算每个区域车辆的平均速度
 def speed_limit(dataset):
     speed = dataset.copy()
     speed['lat'] = speed['latitude'].apply(lambda x:round(x, 2))
@@ -596,7 +538,6 @@ def speed_limit(dataset):
 
 def overspeed(dataset, speed_limit):
     loc = dataset.copy()
-    #add_timestamp(loc)
     loc['lat'] = loc['latitude'].apply(lambda x:round(x, 2))
     loc['lgt'] = loc['longitude'].apply(lambda x:round(x, 2))
     loc_account = loc[~loc['speed'].isin([0])]
@@ -610,78 +551,9 @@ def overspeed(dataset, speed_limit):
     speed = speed.groupby('vin').mean()
     speed.reset_index(inplace=True)
     return(speed)    
-'''
-#计算不同速度区间车辆的行驶里程
-def km_accident(dataset):
-    loc = dataset.copy()
-    loc['record_time'] = loc['record_time'].apply(lambda x:str(x))
-    loc['record_time'] = loc['record_time'].apply(lambda x:datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))    
-    speed0 = loc[(loc['speed']>=0) & (loc['speed']<20)]
-    speed1 = loc[(loc['speed']>=20) & (loc['speed']<50)]
-    speed2 = loc[(loc['speed']>=50) & (loc['speed']<80)]
-    speed3 = loc[(loc['speed']>=80) & (loc['speed']<130)]
-    speed4 = loc[(loc['speed']>=130)]
-    ksum0 = 0
-    ksum1 = 0
-    ksum2 = 0
-    ksum3 = 0
-    ksum4 = 0
 
-    for vin in tqdm(speed0['vin'].unique()):
-        dt_user = speed0[speed0['vin'] == vin]
-        dt_user.reset_index(drop=True, inplace=True)
-        for i in range(len(dt_user)-1):
-            time = (dt_user.loc[i+1, 'record_time'] - dt_user.loc[i, 'record_time']).seconds
-            if time <= 120:
-                ksum0 += haversine(dt_user.loc[i+1, 'longitude'], dt_user.loc[i, 'longitude'],
-                                   dt_user.loc[i+1, 'latitude'], dt_user.loc[i, 'latitude'])
-            else:
-                continue
-    for vin in tqdm(speed1['vin'].unique()):
-        dt_user = speed1[speed1['vin'] == vin]
-        dt_user.reset_index(drop=True, inplace=True)
-        for i in range(len(dt_user)-1):
-            time = (dt_user.loc[i+1, 'record_time'] - dt_user.loc[i, 'record_time']).seconds
-            if time <= 120:
-                ksum1 += haversine(dt_user.loc[i+1, 'longitude'], dt_user.loc[i, 'longitude'],
-                                   dt_user.loc[i+1, 'latitude'], dt_user.loc[i, 'latitude'])
-            else:
-                continue
-    for vin in tqdm(speed2['vin'].unique()):
-        dt_user = speed2[speed2['vin'] == vin]
-        dt_user.reset_index(drop=True, inplace=True)
-        for i in range(len(dt_user)-1):
-            time = (dt_user.loc[i+1, 'record_time'] - dt_user.loc[i, 'record_time']).seconds
-            if time <= 120:
-                ksum2 += haversine(dt_user.loc[i+1, 'longitude'], dt_user.loc[i, 'longitude'],
-                                   dt_user.loc[i+1, 'latitude'], dt_user.loc[i, 'latitude'])
-            else:
-                continue   
-    for vin in tqdm(speed3['vin'].unique()):
-        dt_user = speed3[speed3['vin'] == vin]
-        dt_user.reset_index(drop=True, inplace=True)
-        for i in range(len(dt_user)-1):
-            time = (dt_user.loc[i+1, 'record_time'] - dt_user.loc[i, 'record_time']).seconds
-            if time <= 120:
-                ksum3 += haversine(dt_user.loc[i+1, 'longitude'], dt_user.loc[i, 'longitude'],
-                                   dt_user.loc[i+1, 'latitude'], dt_user.loc[i, 'latitude'])
-            else:
-                continue       
-    for vin in tqdm(speed4['vin'].unique()):
-        dt_user = speed4[speed4['vin'] == vin]
-        dt_user.reset_index(drop=True, inplace=True)
-        for i in range(len(dt_user)-1):
-            time = (dt_user.loc[i+1, 'record_time'] - dt_user.loc[i, 'record_time']).seconds
-            if time <= 120:
-                ksum4 += haversine(dt_user.loc[i+1, 'longitude'], dt_user.loc[i, 'longitude'],
-                                   dt_user.loc[i+1, 'latitude'], dt_user.loc[i, 'latitude'])
-            else:
-                continue      
-    return(ksum0, ksum1, ksum2, ksum3, ksum4)
-'''    
 def weather_feature(dataset, wea):
     loc = dataset.copy()
-    #add_timestamp(loc)
     loc = loc[loc['latitude'] > 30.40]
     loc = loc[loc['latitude'] < 31.53]
     loc = loc[loc['longitude'] < 122.12]
@@ -698,107 +570,4 @@ def weather_feature(dataset, wea):
     
 
 if __name__ == '__main__':
-    #result = data_preprocessing()
-    #result = result[result['year'] == 2018]
-    #to_csv(result)
     result = read_dataset()
-    #result = flag2_2019(result)
-    '''
-    flag1 = pd.read_csv(r"G:\shanghaimotor\code\flag2.csv")
-    flag1 = flag1[flag1['year'] == 2018]
-    flag1 = flag1[['vin', 'year', 'month']]
-    flag1.columns = ['vin', 'crash_year', 'crash_month']
-    result = result[result['vin'].isin(list(flag1['vin'].unique()))]
-    #add_timestamp(result)
-    result = result[result['year'] == 2018]
-    #result = pd.merge(result, flag1, on='vin')
-    #result = result[result['month'] < result['crash_month']]
-    #result = result[result['vin'].isin(list(flag2018['vin']))]
-    #result.drop(['crash_year', 'crash_month'], axis=1, inplace=True)
-    result.sort_values(['vin', 'record_time'], inplace=True)
-    result.reset_index(drop=True, inplace=True)
-    gc.collect()
-    '''
-    
-    #result.reset_index(drop=True, inplace=True)
-    #result2018 = result[result['year'] == 2018]
-    #result2018 = result2018[result2018['month'] <= 6]
-    #result.reset_index(drop=True, inplace=True)
-    #add_timestamp(result)
-    #to_csv(result)
-    
-    
-    #只分析2018年的轨迹数据
-    #result2018 = result2018[result2018['year'] == 2018]
-    #result2018.drop(['year', 'month', 'day', 'hour'], axis=1, inplace=True)
-    
-    #driving_time = driving_time(result2018)
-    #covering = covering(result2018)
-    #place_dif = visiting_frequency(result2018)
-    
-    #turning_radius = turning_radius(result2018)
-    #entropy = life_entropy(result2018)
-    #weekdays_weekends = weekdays_weekends(result2018)
-    #distance = driving_distance(result2018)
-    #trip = driving_trip(result2018)
-    #top_frq = most_visiting(result2018)
-    #accident = accident_rate(result2018)
-    #speed_limit = speed_limit(result2018)
-    #over_speed = overspeed(result2018, speed_limit)
-    #ksum0, ksum1, ksum2, ksum3, ksum4 = km_accident(result2018)
-    #weather = weather_feature(result2018, wea)    
-    
-    #删除出行天数少于30天的车辆
-    #ww_day_pro = dayofweek_pro(result2018)
-    #ww_day_pro = ww_day_pro[(ww_day_pro['weekdays'] + ww_day_pro['weekends']) >= 5]
-    #疲劳驾驶
-    #fatigue = fatigue_driving_count(result2018)
-    #weekends_visiting = weekends_travelling(result2018)
-    '''
-    flag2 = flag2[flag2['year'] == 2018]
-    flag2.drop(['crash_time', 'day', 'flag'], axis=1, inplace=True)
-    flag2.columns = ['vin', 'crash_year', 'crash_month']
-    result = pd.merge(result, flag2, on='vin')
-    result = result[result['year'] == 2018]
-    result = result[result['month'] < result['crash_month']]
-    result.drop(['crash_year', 'crash_month'], axis=1, inplace=True)
-    '''
-    '''
-    driving_time = driving_time(result)
-    driving_time.to_csv("G:/shanghaimotor/code/feature_1/driving_time.csv", index=False)
-    #covering = covering(result)
-    #covering.to_csv("G:/shanghaimotor/code/feature_1/covering.csv", index=False)
-    place_dif = visiting_frequency(result)
-    place_dif.to_csv("G:/shanghaimotor/code/feature_1/place_dif.csv", index=False)
-    turning_radius = turning_radius(result)
-    turning_radius.to_csv("G:/shanghaimotor/code/feature_1/turning_radius.csv", index=False)
-    entropy = life_entropy(result)
-    entropy.to_csv("G:/shanghaimotor/code/feature_1/life_entropy.csv", index=False)
-    weekdays_weekends = weekdays_weekends(result)
-    weekdays_weekends.to_csv("G:/shanghaimotor/code/feature_1/weekdays_weekends.csv", index=False)
-    distance = driving_distance(result)
-    distance.to_csv("G:/shanghaimotor/code/feature_1/distance.csv", index=False)
-    trip = driving_trip(result)
-    trip.to_csv("G:/shanghaimotor/code/feature_1/trip.csv", index=False)
-    top_frq = most_visiting(result)
-    top_frq.to_csv("G:/shanghaimotor/code/feature_1/top10_frq.csv", index=False)
-    #accident = accident_rate(result)
-    ww_day_pro = dayofweek_pro(result)
-    ww_day_pro.to_csv("G:/shanghaimotor/code/feature_1/weekdays_weekends_count.csv", index=False)
-    fatigue = fatigue_driving_count(result)
-    fatigue.to_csv("G:/shanghaimotor/code/feature_1/fatigue_driving.csv", index=False)
-    weekends_visiting = weekends_travelling(result)
-    weekends_visiting.to_csv("G:/shanghaimotor/code/feature_1/weekends_visiting.csv", index=False)
-    '''
-    #night_driving_pro = night_driving_pro(result)
-    #night_driving_time = night_driving_time(result)
-    #night_driving_day = night_driving_day(result)
-    
-    
-    
-    
-    
-    
-    
-    
-    

@@ -1,33 +1,33 @@
-# car-accident-prediction
+#predicción-de-accidente-automovilístico Version 1
 
-本项目是利用车辆的位置数据（亦称经纬度数据或轨迹数据）和速度加速度数据来刻画驾驶者平时驾驶的习惯和特性，然后预测该车辆接下来可能发生碰撞的概率。
+Este proyecto utiliza los datos de ubicación del vehículo (también conocidos como datos de latitud y longitud o datos de trayectoria) y datos de velocidad y aceleración para caracterizar los hábitos y características de conducción habituales del conductor, y luego predecir la probabilidad de que el vehículo se vea involucrado en una colisión.
 
-### 项目难点
+### Dificultades del proyecto
 
-1.发生碰撞的事情随机性很强，并不清楚到底是被其他车辆撞还是自己撞其他车辆。而且受到天气，路况，驾驶者当时的状态能不确定性因素的影响等等。
+1. Las colisiones son muy aleatorias y no está claro si el conductor fue atropellado por otro vehículo o si él mismo chocó contra otro vehículo. También se ve afectado por el clima, las condiciones de la carretera, el estado del conductor en ese momento y factores inciertos, etc.
 
-2.驾驶者的基本特征很难使用。由于驾驶者的基本特征都是当时购买车辆时所记录的特征，但是极有可能车辆是他人开，或者在发生碰撞时正好是其他人驾驶。
+2. Las funciones básicas del controlador son difíciles de utilizar. Dado que las características básicas del conductor son las registradas cuando se compró el vehículo, es muy probable que el vehículo fuera conducido por otra persona, o que alguien más estuviera conduciendo el vehículo en el momento de la colisión.
 
-3.数据量大，很难一次性处理完。数据量比较大，需要对数据进行分批处理。
+3. La cantidad de datos es grande y es difícil procesarlos todos a la vez. La cantidad de datos es relativamente grande y es necesario procesarlos en lotes.
 
-4.由于数据是通过4g信号传输到服务器，可能会出现信号中断，数据上传失败等情况发生。这时候如何对数据预处理也是一个很重要的步骤。
+4. Dado que los datos se transmiten al servidor a través de señales 4g, pueden ocurrir interrupciones en la señal, fallas en la carga de datos, etc. En este momento, cómo preprocesar los datos también es un paso muy importante.
 
-5.速度加速度数据是加速度达到一定阈值后才会采集，那么对于匀速行驶的车辆，就没有速度加速度的记录。反而对于一些经常急刹车急加速的车辆，速度加速度的记录会比较多一些。
+5. Los datos de velocidad y aceleración se recopilan solo después de que la aceleración alcanza un cierto umbral, por lo que para los vehículos que viajan a una velocidad constante, no hay registro de velocidad y aceleración. Por el contrario, para algunos vehículos que suelen frenar y acelerar repentinamente, habrá más récords de velocidad y aceleración.
 
-6.通过数据量情况的分布，我们发现，有些天会因为设备的更新，当天只有极少数的车辆会有记录。这样就会有一些数据量上的差异。
+6. A través de la distribución del volumen de datos, encontramos que algunos días, debido a actualizaciones de equipos, solo una cantidad muy pequeña de vehículos tendrá registros ese día. Habrá algunas diferencias en la cantidad de datos.
 
-7.正负样本比例极其不均衡，不能在使用常用的准确率这个衡量模型的指标，需要用一些其他指标来训练模型。
+7. La proporción de muestras positivas y negativas está extremadamente desequilibrada. La tasa de precisión comúnmente utilizada no se puede utilizar para medir el modelo. Es necesario utilizar otros indicadores para entrenar el modelo.
 
-### 研究思路
+### Ideas de investigación
 
-首先会基于项目的背景和数据内容做一些简单的介绍。内容均在introduction.md中。
+Primero, haremos una breve introducción basada en los antecedentes y el contenido de los datos del proyecto. Todos los contenidos están en introducción.md.
 
-然后统计发生碰撞前的一些特征，比如发生碰撞前的速度、发生碰撞的时间点等等。内容均在crash_feature.md中。
+Luego cuente algunas características antes de la colisión, como la velocidad antes de la colisión, el momento de la colisión, etc. Todo el contenido está en crash_feature.md.
 
-我主要是分析车辆位置数据，也就是轨迹数据，通过轨迹数据做一些特征工程。分别从时间特征和空间特征来提取特征进行预测。内容均在trajectory_feature.md中，特征提取的代码会分别在spatial_feature.py和temporal_feature.
+Analizo principalmente datos de posición del vehículo, es decir, datos de trayectoria, y realizo algunas características de ingeniería a través de datos de trayectoria. Las características se extraen de las características temporales y espaciales respectivamente para la predicción. Todo el contenido está en trajectory_feature.md y los códigos de extracción de características están en espacial_feature.py y temporal_feature.
 
-通过参考论文《You Are How You Drive: Peer and Temporal-Aware Representation Learning for Driving Behavior Analysis》中的研究思路，提取车辆的驾驶速度和方向的信息，形成一个<速度，方向>的二元组状态，共9种状态，分别是：匀速直行、匀速左转、匀速右转、加速直行、加速左转、加速右转、减速直行、减速左转、减速右转，通过数据分析，构建各个状态的转移概率矩阵和转移时间矩阵。
+Al hacer referencia a las ideas de investigación del artículo "Usted es cómo conduce: aprendizaje de representación temporal y entre pares para el análisis del comportamiento de conducción", la información de la velocidad y dirección de conducción del vehículo se extrae para formar un estado de tupla de <velocidad, dirección > Hay 9 estados en total, a saber: seguir recto a velocidad constante, girar a la izquierda a velocidad constante, girar a la derecha a velocidad constante, acelerar y seguir recto, acelerar y girar a la izquierda, acelerar y girar a la derecha, desacelerar y seguir. Siga recto, desacelere y gire a la izquierda, y desacelere y gire a la derecha. Mediante el análisis de datos, se construye la matriz de probabilidad de transición y la matriz de tiempo de transición.
 
-通过自编码模型框架嵌入GRU的方法（考虑到驾驶行为随着时间而变化），通过重构损失函数来进行预测。（与论文最大的不同就是，我们是有监督学习）
+Las predicciones se realizan reconstruyendo la función de pérdida mediante el método de incrustar GRU a través del marco del modelo de codificación automática (teniendo en cuenta que el comportamiento de conducción cambia con el tiempo). (La mayor diferencia con el documento es que estamos supervisando el aprendizaje)
 
-进度和成果持续更新中...
+Los avances y resultados se actualizan continuamente...
